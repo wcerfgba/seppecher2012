@@ -1,0 +1,8 @@
+*ANALYSIS START*
+
+scenario(gerbole-c.txt)
+replace(RandomSeed=0,RandomSeed=seed$)
+replace(herdingPropensity=0.7,herdingPropensity=herding$)
+getVariables(variables 2.csv)
+
+*ANALYSIS END*

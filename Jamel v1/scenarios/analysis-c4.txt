@@ -1,0 +1,8 @@
+*ANALYSIS START*
+
+scenario(gerbole-c4.txt)
+replace(RandomSeed=0,RandomSeed=seed$)
+replace(spanMax=4,spanMax=spanMax$)
+getVariables(variables 4.csv)
+
+*ANALYSIS END*

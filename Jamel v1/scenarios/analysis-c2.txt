@@ -1,0 +1,9 @@
+Une analyse de sensibilité avec distribution des ménages
+
+*ANALYSIS START*
+
+scenario(gerbole-c.txt)
+replace(RandomSeed=0,RandomSeed=seed$)
+getVariables(random-seeds.csv)
+
+*ANALYSIS END*

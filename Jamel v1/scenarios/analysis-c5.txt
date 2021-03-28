@@ -1,0 +1,9 @@
+*ANALYSIS START*
+
+scenario(gerbole-c5.txt)
+replace(RandomSeed=0,RandomSeed=seed$)
+replace(Households:confidence.herdingPropensity=0.7,Households:confidence.herdingPropensity=hp$)
+replace(Firms:confidence.herdingPropensity=0.7,Firms:confidence.herdingPropensity=fp$)
+getVariables(variables 5.csv)
+
+*ANALYSIS END*

@@ -1,0 +1,7 @@
+*ANALYSIS START*
+
+scenario(gerbole131230c.txt)
+replace(RandomSeed=0,RandomSeed=seed$)
+getVariables(variables.csv)
+
+*ANALYSIS END*

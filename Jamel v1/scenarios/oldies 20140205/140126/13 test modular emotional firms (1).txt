@@ -1,0 +1,61 @@
+***********************************
+Macrodynamics with emotional agents
+***********************************
+
+- seules les firmes sont emotives,
+- herding fort (0.75), 
+- une crise isolee vers 2060.
+
+
+*PREAMBLE*
+
+Circuit=jamel.BasicCircuit
+RandomSeed=0
+WindowRange=1200
+Households=jamel.agents.households.exploratory.Household131201  // Emotional households
+//Firms=jamel.agents.firms.exploratory.postRegulation.Firm131222S // Emotional firms, sales
+Firms=jamel.agents.firms.exploratory.postRegulation.ModularFirm
+
+*START*
+
+2000-01.set(Bank.rate:normal=0.05,penalty=0.10)
+2000-01.set(Bank.capital:targetedRatio=0.085,propensityToDistributeExcess=1.)
+2000-01.set(Bank:term=12,accommodating=true)
+
+2000-01.set(Households.savings:propensityToSave=0.1,ratioTarget=0.1,propensityToConsumeExcess=0.5)
+2000-01.set(Households.savings:propensityToSave2=0.9,ratioTarget2=0.9)
+2000-01.set(Households:confidence.herdingPropensity=0.)
+2000-01.set(Households.wage:resistance=12,flexibility=0.05)
+
+2000-01.set(Firms.managers.pricingManager=jamel.agents.firms.exploratory.postRegulation.PricingManager131201)
+2000-01.set(Firms.managers.storeManager=jamel.agents.firms.exploratory.postRegulation.StoreManager131201)
+2000-01.set(Firms.managers.capitalManager=jamel.agents.firms.exploratory.postRegulation.CapitalManager131222S)
+2000-01.set(Firms.managers.publicRelationManager=jamel.agents.firms.exploratory.postRegulation.PublicRelationManager140126)
+
+2000-01.set(Firms.wage:minimum=0,default=3000,downFlex=0.09,upFlex=0.06)
+2000-01.set(Firms.laborContract:min=6,max=18)
+2000-01.set(Firms.capital:normalRatio=0.2,highRatio=0.2,propensityToDistributeExcess=1.)
+2000-01.set(Firms.sales.normalRatio=0.85)
+2000-01.set(Firms:confidence.herdingPropensity=0.)
+2000-01.set(Firms.vacancies:normalRate=0.03,period=4)
+2000-01.set(Firms.regenerationTime:min=12,max=36)
+2000-01.set(Firms.price:flexibility=0.05,spanMin=1,spanMax=4)
+2000-01.set(Firms.inventories:normalLevel=2)
+2000-01.set(Firms:productionTime=8)
+2000-01.set(Firms:productivity=100)
+2000-01.set(Firms:machinery=10)
+2000-01.set(Firms.utilizationRate:flexibility=10,init.min=50,init.max=100)
+
+2000-01.newFirms(firms=110)
+2000-01.newHouseholds(households=1000)
+
+2010-01.set(Bank:accommodating=false)
+
+2100-01.pause()
+2200-01.pause()
+
+*END*
+
+********
+Now, run 
+********

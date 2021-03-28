@@ -1,0 +1,54 @@
+***********************************
+Macrodynamics with emotional agents
+***********************************
+
+- des agents impassibles (leur moral n'influe pas sur leur comportement),
+- un scenario avec une grande stabilite macroeconomique.
+
+*PREAMBLE*
+
+Circuit=jamel.BasicCircuit
+RandomSeed=0
+WindowRange=1200
+Households=jamel.agents.households.exploratory.Household131201  // Emotional households
+Firms=jamel.agents.firms.exploratory.postRegulation.Firm131222S // Emotional firms, sales
+
+Bank.rate:normal=0.05,penalty=0.10
+Bank.capital:targetedRatio=0.085,propensityToDistributeExcess=1.
+Bank:term=12,accommodating=true
+
+Households.savings:propensityToSave=0.15,ratioTarget=0.15,propensityToConsumeExcess=0.5
+Households.savings:propensityToSave2=0.15,ratioTarget2=0.15
+Households:confidence.herdingPropensity=0.7
+Households.wage:resistance=12,flexibility=0.05
+
+Firms.wage:minimum=0,default=3000,downFlex=0.09,upFlex=0.06
+Firms.laborContract:min=6,max=18
+Firms.capital:normalRatio=0.2,highRatio=0.2,propensityToDistributeExcess=1.
+Firms.sales.normalRatio=0.85
+Firms:confidence.herdingPropensity=0.7
+Firms.vacancies:normalRate=0.03,period=4
+Firms.regenerationTime:min=12,max=36
+Firms.price:flexibility=0.05,spanMin=1,spanMax=4
+Firms.inventories:normalLevel=2
+Firms:productionTime=8
+Firms:productivity=100
+Firms:machinery=10
+Firms.utilizationRate:flexibility=10,init.min=50,init.max=100
+
+*START*
+
+2000-01.newFirms(firms=550)
+2000-01.newHouseholds(households=5000)
+
+2010-01.set(Bank:accommodating=false)
+
+2010-01.export.data.begin(month,seed$,%period,%consumptionVol,%consumptionVal,%salesVolS2,%salesCostValS2,%salesPriceValS2,%prodVolS2,%prodValS2,%workforceS2,%unemployed,%unemploymentDuration,%vacanciesS2,%invVolS2,%invFinVal,%invUnfVal,%fPessimism,%hPessimism,%hDeposits,%fDeposits,%debtS2,%doubtDebt,%nPLoans,%bankruptS2,%grossProfitS2,%wageBillS2)
+
+2100-01.stop()
+
+*END*
+
+********
+Now, run 
+********

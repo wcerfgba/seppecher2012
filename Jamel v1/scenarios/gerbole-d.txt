@@ -1,0 +1,80 @@
+***********************************
+Macrodynamics with emotional agents
+***********************************
+
+2/04/14, gerbole d:
+même scénario que (gerbole c) mais avec des ménages plus flexibles.
+
+*PREAMBLE*
+
+Circuit=jamel.BasicCircuit
+RandomSeed=0
+WindowRange=2400
+
+Households=jamel.exploratory.mod1402.EmotionalHousehold
+Firms=jamel.agents.firms.ModularFirm
+Firms.pricingManager=jamel.exploratory.mod1402.SmartPricingManager
+Firms.storeManager=jamel.exploratory.mod1402.SmartStoreManager
+Firms.capitalManager=jamel.exploratory.mod1402.EmotionalCapitalManager
+Firms.publicRelationManager=jamel.exploratory.mod1402.EmotionalPublicRelationManager
+Firms.productionManager=jamel.agents.firms.managers.BasicProductionManager
+Firms.workforceManager=jamel.agents.firms.managers.BasicWorkforceManager
+
+Bank.rate:normal=0.05,penalty=0.10
+Bank.capital:targetedRatio=0.085,propensityToDistributeExcess=1.
+Bank:term=12,accommodating=true
+
+Households.savings:propensityToSave=0.15,ratioTarget=0.15,propensityToConsumeExcess=0.5
+Households.savings:propensityToSave2=0.2,ratioTarget2=0.2
+Households:confidence.herdingPropensity=0.7
+//Households.wage:resistance=12,flexibility=0.05 // valeurs du scénario c.
+//Households.wage:resistance=12,flexibility=0.08 // cycles marqués.
+//Households.wage:resistance=12,flexibility=0.1 // corridor et cycles marqués.
+//Households.wage:resistance=12,flexibility=0.15 // corridor, 4 grandes crises
+//Households.wage:resistance=12,flexibility=0.2 // deux états, avec part des salaires haute ou basse, et des switchs entre les deux états.
+//Households.wage:resistance=12,flexibility=0.21 // crise sys en 2062.
+//Households.wage:resistance=12,flexibility=0.22 // une crise "normale" en 2050, puis une crise sys en 2113.
+//Households.wage:resistance=12,flexibility=0.23 // crise sys en 2030.
+Households.wage:resistance=12,flexibility=0.25 // crise sys en 2049.
+//Households.wage:resistance=12,flexibility=0.3 // crise sys en 2056.
+
+//Households.wage:resistance=2,flexibility=0.05 // éco calée sur la depression.
+//Households.wage:resistance=2,flexibility=0.1 // crise sys rapide.
+//Households.wage:resistance=6,flexibility=0.1 // crise sys en 2055.
+
+
+Firms.wage:minimum=0,default=3000,downFlex=0.09,upFlex=0.06
+Firms.laborContract:min=6,max=18
+Firms.capital:normalRatio=0.2,highRatio=0.5,propensityToDistributeExcess=1.
+Firms.sales.normalRatio=0.83
+Firms:confidence.herdingPropensity=0.7
+Firms.vacancies:normalRate=0.03,period=4
+Firms.regenerationTime:min=12,max=36
+Firms.price:flexibility=0.05,spanMin=1,spanMax=4
+Firms.inventories:normalLevel=2
+Firms:productionTime=8
+Firms:productivity=100
+Firms:machinery=10
+Firms.utilizationRate:flexibility=10,init.min=50,init.max=100
+
+*START*
+
+2000-01.newFirms(firms=550)
+2000-01.newHouseholds(households=5000)
+
+2010-01.set(Bank:accommodating=false)
+
+2010-01.export.data.begin(month,seed$,%period,%consumptionVol,%consumptionVal,%grossProfitS2,%wageBillS2,%unemployed,%hSavings,%hSavingTarget,%debtTarget,%debtS2)
+
+//2010-01.export.data.begin(month,seed$,%period,%consumptionVol,%consumptionVal,%unemployed,%hDeposits,%hSavings,%hSavingTarget)
+//2010-01.export.data.begin(month,seed$,%period,%consumptionVol,%consumptionVal,%salesVolS2,%salesCostValS2,%salesPriceValS2,%prodVolS2,%prodValS2,%workforceS2,%unemployed,%unemploymentDuration,%vacanciesS2,%invVolS2,%invFinVal,%invUnfVal,%fPessimism,%hPessimism,%hDeposits,%fDeposits,%debtTarget,%debtS2,%doubtDebt,%nPLoans,%bankruptS2,%grossProfitS2,%wageBillS2,%capitalists,hCapital,%capDeposits,%capIncome,%capConsumptionVal,%capConsumptionVol,%capWages,%capDividends,%dividendsFinal)
+
+//2100-01.export.data.households(seed$,%period,%name,%wage,%reservationWage,%dividend,%capital,%deposits,%employmentStatus,%employmentDuration,%unemploymentDuration,%consumptionBudget,%consumptionValue,%consumptionVolume,%optimism)
+
+2049-05.stop()
+
+*END*
+
+********
+Now, run 
+********
