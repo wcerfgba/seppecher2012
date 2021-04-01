@@ -53,7 +53,7 @@ class Household(NamedTuple):
     employment_status: EmploymentStatus = EmploymentStatus.INVOLUNTARY_UNEMPLOYED
     reservation_wage: int = 0
     unemployment_duration: int = 0
-    consumption_quantity: int = 0
+    consumption_volume: int = 0
     consumption_value: int = 0
     savings_target_ratio: Fraction = Fraction(5, 100)
     propensity_to_save: Fraction = Fraction(5, 100)
@@ -91,12 +91,14 @@ class Firm(NamedTuple):
     hiring_contract_length_minimum: int = 6
     hiring_contract_length_maximum: int = 18
     hiring_vacancy_rate_history: list[Fraction] = []
+    hiring_vacancy_memory: int = 4
     hiring_vacancies_normal_rate: Fraction = Fraction(3, 100)
     machinery: dict[int, Machine] = {i : Machine(id=i) for i in range(10)}
     inventory_volume: int = 0
     inventory_value: int = 0
     inventory_for_sale_quantity: int = 0
     inventory_for_sale_unit_price: int = 0
+    production_volume: int = 0
     target_capital_ratio: Fraction = Fraction(10, 100)
     propensity_to_distribute_excess_capital: Fraction = Fraction(50, 100)
     target_inventory: int = 4_000
@@ -111,8 +113,7 @@ class Simulation(NamedTuple):
     households: dict[int, Household] = {i : Household(id=i) for i in range(1_000)}
     firms: dict[int, Firm] = {i : Firm(id=i) for i in range(100)}
 
-def new_sim():
-    sim = Simulation()
+def create_bank_accounts(sim):
     def bank_open_account_household(sim, household_id):
         account = Account(id = sim.bank.accounts_issued)
         return sim._replace(
@@ -297,7 +298,9 @@ def firm_plan_production(sim, firm_id):
                          if 0 < employment_contract.time_remaining]
     hiring_vacancies = target_employees - len(current_employees)
     if hiring_vacancies < 0:
-        to_fire_contracts = sample(current_employees, min(-hiring_vacancies, len(current_employees)))
+        to_fire = -hiring_vacancies
+        hiring_vacancies = 0
+        to_fire_contracts = sample(current_employees, min(to_fire, len(current_employees)))
         sim = reduce(lambda sim, employment_contract: firm_fire(sim, firm_id, employment_contract.id),
                      to_fire_contracts,
                      sim)
@@ -463,6 +466,10 @@ def firm_hire_household(sim, firm_id, household_id):
     )
 
 def firms_production(sim):
+    sim = sim._replace(
+      firms = {id : firm._replace(production_volume = 0)
+               for (id, firm) in sim.firms.items()}
+    )
     firm_ids = [firm.id for firm in sim.firms.values()
                 if not sim.bank.accounts[firm.account_id].bankrupt]
     shuffle(firm_ids)
@@ -502,9 +509,11 @@ def firm_production(sim, firm_id):
         value = machine.value + employment_contract.wage
         inventory_value = firm.inventory_value
         inventory_volume = firm.inventory_volume
+        production_volume = firm.production_volume
         if progress == machine.production_time:
             inventory_value += value
             inventory_volume += machine.productivity
+            production_volume += machine.productivity
             progress = 0
             value = 0
         return firm._replace(
@@ -516,7 +525,8 @@ def firm_production(sim, firm_id):
                 )
             },
             inventory_value = inventory_value,
-            inventory_volume = inventory_volume
+            inventory_volume = inventory_volume,
+            production_volume = production_volume
         )
     firm = reduce(machine_work, work_schedule, firm)
 
@@ -530,7 +540,7 @@ def firm_production(sim, firm_id):
             **sim.firms,
             firm.id : firm._replace(
                 inventory_for_sale_quantity = inventory_for_sale_quantity,
-                hiring_vacancy_rate_history = [*firm.hiring_vacancy_rate_history, hiring_vacancy_rate]
+                hiring_vacancy_rate_history = [*firm.hiring_vacancy_rate_history[-firm.hiring_vacancy_memory:], hiring_vacancy_rate]
             )
         }
     )
@@ -553,10 +563,20 @@ def firm_pay_worker(sim, firm_id, employment_contract_id):
                     balance = household_account.balance + employment_contract.wage
                 )
             }
-        )
+        ),
+        households = {
+          **sim.households,
+          household.id : household._replace(
+            income_history = [*household.income_history, employment_contract.wage]
+          )
+        }
     )
 
 def households_consume(sim):
+    sim = sim._replace(
+      households = {id : household._replace(consumption_volume = 0)
+                    for (id, household) in sim.households.items()}
+    )
     household_ids = [household.id for household in sim.households.values()
                      if not sim.bank.accounts[household.account_id].bankrupt]
     shuffle(household_ids)
@@ -577,7 +597,7 @@ def household_consume(sim, household_id):
     else:
         consumption_target = average_income + (savings - savings_target) * household.propensity_to_consume_excess_savings
     budget = min(account.balance, consumption_target)
-    suppliers = household_search_suppliers(household, sim.firms)
+    suppliers = household_search_suppliers(sim, household)
     def purchase(state, household_id, firm):
         sim, budget = state
         household = sim.households[household_id]
@@ -611,6 +631,12 @@ def household_consume(sim, household_id):
                     inventory_value = firm.inventory_value - deal_inventory_value,
                     inventory_for_sale_quantity = firm.inventory_for_sale_quantity - deal_volume
                 )
+            },
+            households = {
+              **sim.households,
+              household.id : household._replace(
+                consumption_volume = household.consumption_volume + deal_volume
+              )
             }
         )
         budget = budget - deal_value
@@ -622,10 +648,10 @@ def household_consume(sim, household_id):
 
     return sim
 
-def household_search_suppliers(household, firms):
+def household_search_suppliers(sim, household):
     selling_firms = list(filter(
-        lambda firm: 0 < firm.inventory_for_sale_unit_price,
-        firms.values()
+        lambda firm: 0 < firm.inventory_for_sale_unit_price and not sim.bank.accounts[firm.account_id].bankrupt,
+        sim.firms.values()
     ))
     found_firms = sample(selling_firms, household.purchase_search_size)
     return sorted(found_firms, key=lambda firm: firm.inventory_for_sale_unit_price, reverse=True)
