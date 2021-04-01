@@ -291,15 +291,15 @@ def firm_plan_production(sim, firm_id):
 
     # Determine workforce
     target_employees = floor(len(firm.machinery) * target_utilization_ratio)
-    current_employees = len([employment_contract
-                             for employment_contract
-                             in firm.employment_contracts.values()
-                             if 0 < employment_contract.time_remaining])
-    hiring_vacancies = target_employees - current_employees
+    current_employees = [employment_contract
+                         for employment_contract
+                         in firm.employment_contracts.values()
+                         if 0 < employment_contract.time_remaining]
+    hiring_vacancies = target_employees - len(current_employees)
     if hiring_vacancies < 0:
-        to_fire_ids = sample(list(firm.employment_contracts.keys()), -hiring_vacancies)
-        sim = reduce(lambda sim, employment_contract_id: firm_fire(sim, firm_id, employment_contract_id),
-                     to_fire_ids,
+        to_fire_contracts = sample(current_employees, min(-hiring_vacancies, len(current_employees)))
+        sim = reduce(lambda sim, employment_contract: firm_fire(sim, firm_id, employment_contract.id),
+                     to_fire_contracts,
                      sim)
 
     # Determine wage
@@ -352,8 +352,8 @@ def firm_fire(sim, firm_id, employment_contract_id):
         firms = {
             **sim.firms,
             firm.id : firm._replace(
-                employment_contracts = {contract for contract in firm.employment_contracts
-                                        if contract.id != employment_contract.id}
+                employment_contracts = {id : contract for (id, contract) in firm.employment_contracts.items()
+                                        if id != employment_contract.id}
             )
         },
         households = {
