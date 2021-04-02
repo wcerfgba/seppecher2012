@@ -61,9 +61,10 @@ def plot_production_consumption(run):
     plt.show()
 
 def loan_quality_count(quality, step):
-    return sum([len([loan for loan in account.loans.values()
-                     if loan.quality == quality])
-               for account in step.bank.accounts.values()])
+    return sum([1
+               for account in step.bank.accounts.values()
+               for loan in account.loans.values()
+               if loan.quality == quality])
 
 def bankruptcies_count(step):
     return len([account for account in step.bank.accounts.values()

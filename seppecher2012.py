@@ -1,5 +1,5 @@
 import enum
-from enum import Enum
+from enum import IntEnum
 from fractions import Fraction
 from functools import cmp_to_key, reduce
 from math import ceil, floor
@@ -7,7 +7,7 @@ from random import random, randrange, sample, shuffle
 from statistics import mean
 from typing import NamedTuple
 
-class LoanQuality(Enum):
+class LoanQuality(IntEnum):
     GOOD = enum.auto()
     DOUBTFUL = enum.auto()
     BAD = enum.auto()
@@ -40,7 +40,7 @@ class Bank(NamedTuple):
     loan_penalty_rate: Fraction = Fraction(10, 100)
     bankrupt: bool = False
 
-class EmploymentStatus(Enum):
+class EmploymentStatus(IntEnum):
     EMPLOYED = enum.auto()
     INVOLUNTARY_UNEMPLOYED = enum.auto()
     VOLUNTARY_UNEMPLOYED = enum.auto()
@@ -271,9 +271,11 @@ def firm_plan_production(sim, firm_id):
     if inventory_ratio < 1 - alpha1 * alpha2:
         # Low level
         target_utilization_ratio += utilization_ratio_delta
+        target_utilization_ratio = min(1, target_utilization_ratio)
     elif 1 + alpha1 * alpha2 < inventory_ratio:
         # High level
         target_utilization_ratio -= utilization_ratio_delta
+        target_utilization_ratio = max(0, target_utilization_ratio)
     target_utilization_ratio = min(1, target_utilization_ratio, firm.max_utilization_ratio)
 
     # Determine price
