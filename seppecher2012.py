@@ -84,7 +84,7 @@ class Firm(NamedTuple):
     employment_contracts: dict[int, EmploymentContract] = {}
     employment_contracts_issued: int = 0
     hiring_vacancies: int = 10
-    hiring_wage: int = 30_00
+    hiring_wage: int = 3_000_00
     hiring_wage_flex_up: Fraction = Fraction(6, 100)
     hiring_wage_flex_down: Fraction = Fraction(9, 100)
     hiring_wage_minimum: int = 0
@@ -280,7 +280,7 @@ def firm_plan_production(sim, firm_id):
     inventory_for_sale_unit_price = firm.inventory_for_sale_unit_price
     if inventory_for_sale_unit_price == 0:
         unit_cost = Fraction(firm.inventory_value, firm.inventory_volume or 1)
-        inventory_for_sale_unit_price = 100 + 0.5 * random() * unit_cost
+        inventory_for_sale_unit_price = (1 + 0.5 * random()) * unit_cost
     else:
         alpha1 = random()
         alpha2 = random()
@@ -290,7 +290,8 @@ def firm_plan_production(sim, firm_id):
         elif 1 + alpha1 * alpha2 < inventory_ratio:
             # High level
             inventory_for_sale_unit_price *= 1 - alpha1 * firm.price_flexibility
-    inventory_for_sale_unit_price = max(1, ceil(inventory_for_sale_unit_price))
+            inventory_for_sale_unit_price = max(1, inventory_for_sale_unit_price)
+    inventory_for_sale_unit_price = ceil(inventory_for_sale_unit_price)
 
     # Determine workforce
     target_employees = floor(len(firm.machinery) * target_utilization_ratio)
@@ -537,8 +538,10 @@ def firm_production(sim, firm_id):
 
     # Offer goods
     max_production = sum([machine.productivity for machine in firm.machinery.values()])
-    inventory_for_sale_quantity = floor(min(firm.inventory_volume * firm.propensity_to_sell,
-                                    2 * max_production))
+    inventory_for_sale_quantity = 0
+    if 0 < firm.inventory_for_sale_unit_price:
+      inventory_for_sale_quantity = floor(min(firm.inventory_volume * firm.propensity_to_sell,
+                                              2 * max_production))
 
     return sim._replace(
         firms = {
@@ -780,38 +783,53 @@ def loan_pay_back(sim, account_id, loan_id):
     account = bank.accounts[account_id]
     loan = account.loans[loan_id]
 
+    interest_rate = loan.interest_rate
     time_remaining = loan.time_remaining
     quality = loan.quality
 
-    if quality == LoanQuality.GOOD and 0 < time_remaining:
-        return sim
-
-    repayment = min(account.balance, loan.principal)
-    if time_remaining == 0 and account.balance < loan.principal:
+    if time_remaining == 0:
+      repayment = min(account.balance, loan.principal)
+      if account.balance < loan.principal:
         time_remaining += loan.term
         if quality == LoanQuality.GOOD:
+            interest_rate = bank.loan_penalty_rate
             quality = LoanQuality.DOUBTFUL
-        elif quality == LoanQuality.DOUBTFUL:
+        elif quality == LoanQuality.DOUBTFUL and not bank.accommodating:
             quality = LoanQuality.BAD
-
-    return sim._replace(
-        bank = bank._replace(
-            accounts = {
-                **bank.accounts,
-                account.id : account._replace(
-                    balance = account.balance - repayment,
-                    loans = {
-                        **account.loans,
-                        loan.id : loan._replace(
-                            principal = loan.principal - repayment,
-                            quality = quality,
-                            time_remaining = time_remaining
-                        )
-                    }
-                )
-            }
+        return sim._replace(
+            bank = bank._replace(
+                accounts = {
+                    **bank.accounts,
+                    account.id : account._replace(
+                        balance = account.balance - repayment,
+                        loans = {
+                            **account.loans,
+                            loan.id : loan._replace(
+                                principal = loan.principal - repayment,
+                                quality = quality,
+                                time_remaining = time_remaining,
+                                interest_rate = interest_rate
+                            )
+                        }
+                    )
+                }
+            )
         )
-    )
+      else:
+        return sim._replace(
+            bank = bank._replace(
+                accounts = {
+                    **bank.accounts,
+                    account.id : account._replace(
+                        balance = account.balance - repayment,
+                        loans = {l.id : l for l in account.loans.values()
+                                  if l.id != loan.id}
+                    )
+                }
+            )
+        )
+    else:
+      return sim
 
 def loan_cancel(sim, account_id, loan_id):
     bank = sim.bank
@@ -820,30 +838,29 @@ def loan_cancel(sim, account_id, loan_id):
 
     principal = loan.principal
     capital = bank.capital
-    bank_bankrupt = bank.bankrupt
 
-    if capital < principal:
-        bank_bankrupt = True
     capital -= min(capital, principal)
     principal -= min(capital, principal)
 
-    return sim._replace(
-        bank = bank._replace(
-            bankrupt = bank_bankrupt,
-            capital = capital,
-            accounts = {
-                **bank.accounts,
-                account.id : account._replace(
-                    loans = {
-                        **account.loans,
-                        loan.id : loan._replace(
-                            principal = principal
-                        )
-                    }
-                )
-            }
+    if capital < principal:
+        return sim._replace(
+          bank = bank._replace(
+            bankrupt = True
+          )
         )
-    )
+    else:
+      return sim._replace(
+          bank = bank._replace(
+              capital = capital,
+              accounts = {
+                  **bank.accounts,
+                  account.id : account._replace(
+                      loans = {l.id : l for l in account.loans.values()
+                               if l.id != loan.id}
+                  )
+              }
+          )
+      )
 
 def bank_tick_loans(sim):
   account_ids = [account.id for account in sim.bank.accounts.values()
