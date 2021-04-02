@@ -35,10 +35,10 @@ class Bank(NamedTuple):
     accommodating: bool = True
     target_capital_ratio: Fraction = Fraction(10, 100)
     propensity_to_distribute_excess_capital: Fraction = Fraction(50, 100)
-    loan_normal_interest_rate: Fraction = Fraction(5, 100)
     loan_term: int = 12
     loan_normal_rate: Fraction = Fraction(5, 100)
     loan_penalty_rate: Fraction = Fraction(10, 100)
+    bankrupt: bool = False
 
 class EmploymentStatus(Enum):
     EMPLOYED = enum.auto()
@@ -84,7 +84,7 @@ class Firm(NamedTuple):
     employment_contracts: dict[int, EmploymentContract] = {}
     employment_contracts_issued: int = 0
     hiring_vacancies: int = 10
-    hiring_wage: int = 3_000_00
+    hiring_wage: int = 30_00
     hiring_wage_flex_up: Fraction = Fraction(6, 100)
     hiring_wage_flex_down: Fraction = Fraction(9, 100)
     hiring_wage_minimum: int = 0
@@ -99,7 +99,7 @@ class Firm(NamedTuple):
     inventory_for_sale_quantity: int = 0
     inventory_for_sale_unit_price: int = 0
     production_volume: int = 0
-    target_capital_ratio: Fraction = Fraction(10, 100)
+    target_capital_ratio: Fraction = Fraction(50, 100)
     propensity_to_distribute_excess_capital: Fraction = Fraction(50, 100)
     target_inventory: int = 4_000
     propensity_to_sell: Fraction = Fraction(50, 100)
@@ -148,8 +148,10 @@ def step(sim):
     sim = firms_plan_production(sim)
     sim = households_job_search(sim)
     sim = firms_production(sim)
+    sim = firms_tick_contracts(sim)
     sim = households_consume(sim)
     sim = bank_debt_recovery(sim)
+    sim = bank_tick_loans(sim)
     sim = firms_layoff_bankrupt(sim)
     return sim
 
@@ -230,7 +232,7 @@ def bank_lend(bank, account_id, principal):
         principal = principal,
         initial_value = principal,
         quality = LoanQuality.GOOD,
-        interest_rate = bank.loan_normal_interest_rate,
+        interest_rate = bank.loan_normal_rate,
         time_remaining = bank.loan_term,
         term = bank.loan_term
     )
@@ -252,7 +254,7 @@ def firms_plan_production(sim):
     firm_ids = [firm.id for firm in sim.firms.values()
                 if not sim.bank.accounts[firm.account_id].bankrupt]
     shuffle(firm_ids)
-    return reduce(firm_plan_production, sim.firms.keys(), sim)
+    return reduce(firm_plan_production, firm_ids, sim)
 
 def firm_plan_production(sim, firm_id):
     bank = sim.bank
@@ -278,7 +280,7 @@ def firm_plan_production(sim, firm_id):
     inventory_for_sale_unit_price = firm.inventory_for_sale_unit_price
     if inventory_for_sale_unit_price == 0:
         unit_cost = Fraction(firm.inventory_value, firm.inventory_volume or 1)
-        inventory_for_sale_unit_price = 1 + 0.5 * random() * unit_cost
+        inventory_for_sale_unit_price = 100 + 0.5 * random() * unit_cost
     else:
         alpha1 = random()
         alpha2 = random()
@@ -482,7 +484,10 @@ def firm_production(sim, firm_id):
 
     # Pay workers
     sim = reduce(lambda sim, employment_contract_id: firm_pay_worker(sim, firm_id, employment_contract_id),
-                 firm.employment_contracts.keys(),
+                 [employment_contract.id
+                  for employment_contract
+                  in firm.employment_contracts.values()
+                  if 0 < employment_contract.time_remaining],
                  sim)
 
     # Produce
@@ -543,6 +548,40 @@ def firm_production(sim, firm_id):
                 hiring_vacancy_rate_history = [*firm.hiring_vacancy_rate_history[-firm.hiring_vacancy_memory:], hiring_vacancy_rate]
             )
         }
+    )
+
+def firms_tick_contracts(sim):
+  firm_ids = [firm.id for firm in sim.firms.values()
+              if not sim.bank.accounts[firm.account_id].bankrupt]
+  shuffle(firm_ids)
+  return reduce(firm_tick_contracts, firm_ids, sim)
+
+def firm_tick_contracts(sim, firm_id):
+  firm = sim.firms[firm_id]
+  return reduce(lambda sim, employment_contract_id: firm_tick_contract(sim, firm_id, employment_contract_id),
+                [employment_contract.id for employment_contract in firm.employment_contracts.values()
+                 if 0 < employment_contract.time_remaining],
+                sim)
+
+def firm_tick_contract(sim, firm_id, employment_contract_id):
+  firm = sim.firms[firm_id]
+  employment_contract = firm.employment_contracts[employment_contract_id]
+  time_remaining = employment_contract.time_remaining - 1
+  if time_remaining == 0:
+    return firm_fire(sim, firm_id, employment_contract_id)
+  else:
+    return sim._replace(
+      firms = {
+        **sim.firms,
+        firm.id : firm._replace(
+          employment_contracts = {
+            **firm.employment_contracts,
+            employment_contract.id : employment_contract._replace(
+              time_remaining = time_remaining
+            )
+          }
+        )
+      }
     )
 
 def firm_pay_worker(sim, firm_id, employment_contract_id):
@@ -653,11 +692,12 @@ def household_search_suppliers(sim, household):
         lambda firm: 0 < firm.inventory_for_sale_unit_price and not sim.bank.accounts[firm.account_id].bankrupt,
         sim.firms.values()
     ))
-    found_firms = sample(selling_firms, household.purchase_search_size)
+    found_firms = sample(selling_firms, min(household.purchase_search_size, len(selling_firms)))
     return sorted(found_firms, key=lambda firm: firm.inventory_for_sale_unit_price, reverse=True)
 
 def bank_debt_recovery(sim):
-    account_ids = list(sim.bank.accounts.keys())
+    account_ids = [account.id for account in sim.bank.accounts.values()
+                   if not account.bankrupt]
     shuffle(account_ids)
     return reduce(bank_debt_recovery_account, account_ids, sim)
 
@@ -804,6 +844,39 @@ def loan_cancel(sim, account_id, loan_id):
             }
         )
     )
+
+def bank_tick_loans(sim):
+  account_ids = [account.id for account in sim.bank.accounts.values()
+                 if not account.bankrupt]
+  shuffle(account_ids)
+  return reduce(account_tick_loans, account_ids, sim)
+
+def account_tick_loans(sim, account_id):
+  account = sim.bank.accounts[account_id]
+  return reduce(lambda sim, loan_id: bank_tick_account_loan(sim, account_id, loan_id),
+                [loan.id for loan in account.loans.values()
+                 if 0 < loan.time_remaining],
+                sim)
+
+def bank_tick_account_loan(sim, account_id, loan_id):
+  account = sim.bank.accounts[account_id]
+  loan = account.loans[loan_id]
+  time_remaining = loan.time_remaining - 1
+  return sim._replace(
+    bank = sim.bank._replace(
+      accounts = {
+        **sim.bank.accounts,
+        account.id : account._replace(
+          loans = {
+            **account.loans,
+            loan.id : loan._replace(
+              time_remaining = time_remaining
+            )
+          }
+        )
+      }
+    )
+  )
 
 def firms_layoff_bankrupt(sim):
     firm_ids = [firm.id for firm in sim.firms.values()

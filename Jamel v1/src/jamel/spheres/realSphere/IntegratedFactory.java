@@ -3,21 +3,21 @@
  * =========================================================
  *
  * (C) Copyright 2007-2013, Pascal Seppecher.
- *
- * Project Info <http://p.seppecher.free.fr/jamel/javadoc/index.html>.
+ * 
+ * Project Info <http://p.seppecher.free.fr/jamel/javadoc/index.html>. 
  *
  * This file is a part of JAMEL (Java Agent-based MacroEconomic Laboratory).
- *
+ * 
  * JAMEL is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * 
  * JAMEL is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License
  * along with JAMEL. If not, see <http://www.gnu.org/licenses/>.
  *
@@ -46,25 +46,25 @@ public class IntegratedFactory extends AbstractFactory {
 		 * When the production process is completed, a new nonempty {@link FinalGoods} object is created.
 		 */
 		private class Process extends AbstractProductionProcess {
-
+			
 			/**
 			 * The product of the process.
 			 */
 			private class Product extends FinalGoods {
-
+				
 				/**
 				 * Creates a nonempty volume of commodities from a production-process.
 				 */
 				private Product() {
-					if (!Process.this.isCompleted())
-						new RuntimeException("Production process not completed.");
+					if (!Process.this.isCompleted()) 
+						new RuntimeException("Production process not completed."); 
 					this.setVolume((int) (Process.this.getProgress()*Process.this.getProductivity()));
 					this.setValue(Process.this.getValue());
 					Process.this.cancel();
-					if (this.getVolume()<=0) new RuntimeException("The product volume negative or null.");
+					if (this.getVolume()<=0) new RuntimeException("The product volume negative or null."); 
 					if (this.getValue()<=0) new RuntimeException("The product value negative or null.");
 				}
-
+				
 			}
 
 			/**
@@ -89,8 +89,8 @@ public class IntegratedFactory extends AbstractFactory {
 					IntegratedFactory.this.addProduct(new Product());
 					process = null;
 				}
-			}
-
+			}	
+		
 		}
 
 		/**
@@ -101,7 +101,7 @@ public class IntegratedFactory extends AbstractFactory {
 		protected ProductionProcess newProductionProcess() {
 			return new Process();
 		}
-
+		
 	}
 
 	/**
@@ -114,7 +114,7 @@ public class IntegratedFactory extends AbstractFactory {
 	}
 
 	/**
-	 * Returns the max level of production according to the current resources of the factory.
+	 * Returns the max level of production according to the current resources of the factory. 
 	 * @return 100.
 	 */
 	@Override
@@ -123,8 +123,8 @@ public class IntegratedFactory extends AbstractFactory {
 	}
 
 	/**
-	 * Returns 0, cause a factory of the sector of intermediate goods does not require raw materials.
-	 * @return 0
+	 * Returns 0, cause a factory of the sector of intermediate goods does not require raw materials. 
+	 * @return 0 
 	 */
 	@Override
 	protected int getRawMaterialsNeedVolume() {
@@ -148,7 +148,7 @@ public class IntegratedFactory extends AbstractFactory {
 	protected long getRawMaterialsInventoryValue() {
 		return 0;
 	}
-
+	
 }
 
 

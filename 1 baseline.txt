@@ -12,19 +12,18 @@ Bank.rate:normal=0.05,penalty=0.10
 Bank.capital:targetedRatio=0.1,propensityToDistributeExcess=0.5
 Bank:term=12,accommodating=true
 
-Households=jamel.agents.households.HouseholdC // A basic household
+Households=jamel.agents.households.BasicHousehold //.HouseholdC // A basic household
 Households.savings:propensityToSave=0.05,ratioTarget=0.05,propensityToConsumeExcess=0.5
 Households.wage:resistance=12,flexibility=0.05
 Households.memory:providers=5,employers=5
 
 Firms=jamel.agents.firms.ModularFirm // A modular firm
-Firms.managers.pricingManager=jamel.agents.firms.managers.BasicPricingManager
-Firms.managers.storeManager=jamel.agents.firms.managers.BasicStoreManager
-Firms.managers.capitalManager=jamel.agents.firms.managers.BasicCapitalManager
-Firms.managers.publicRelationManager=jamel.agents.firms.managers.BasicPublicRelationManager
-Firms.managers.productionManager=jamel.agents.firms.managers.BasicProductionManager
+Firms.pricingManager=jamel.agents.firms.managers.BasicPricingManager
+Firms.storeManager=jamel.agents.firms.managers.BasicStoreManager
+Firms.capitalManager=jamel.agents.firms.managers.BasicCapitalManager
+Firms.publicRelationManager=jamel.agents.firms.managers.BasicPublicRelationManager
+Firms.productionManager=jamel.agents.firms.managers.BasicProductionManager
 Firms.workforceManager=jamel.agents.firms.managers.BasicWorkforceManager
-Firms.managers.workforceManager=jamel.agents.firms.managers.BasicWorkforceManager
 Firms.wage:minimum=0,default=3000,downFlex=0.09,upFlex=0.06
 Firms.laborContract:min=6,max=18
 Firms.capital:normalRatio=0.5,propensityToDistributeExcess=0.5
