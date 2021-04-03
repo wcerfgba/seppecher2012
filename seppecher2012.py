@@ -334,10 +334,10 @@ def firm_plan_production(sim, firm_id):
         vacancy_ratio = Fraction(average_vacancy_rate, firm.hiring_vacancies_normal_rate)
         if vacancy_ratio < 1 - alpha1 * alpha2:
             # Low level
-            hiring_wage *= 1 + alpha1 * firm.hiring_wage_flex_down
+            hiring_wage *= 1 - alpha1 * firm.hiring_wage_flex_down
         elif 1 + alpha1 * alpha2 < vacancy_ratio:
             # High level
-            hiring_wage *= 1 - alpha1 * firm.hiring_wage_flex_up
+            hiring_wage *= 1 + alpha1 * firm.hiring_wage_flex_up
         hiring_wage = floor(max(hiring_wage, firm.hiring_wage_minimum))
 
     wage_budget = hiring_vacancies * hiring_wage + sum([employment_contract.wage
@@ -505,6 +505,7 @@ def firm_production(sim, firm_id):
                   in firm.employment_contracts.values()
                   if 0 < employment_contract.time_remaining],
                  sim)
+    firm = sim.firms[firm_id]
 
     # Produce
     def machine_sort_cmp(machine_x, machine_y):
@@ -563,7 +564,7 @@ def firm_production(sim, firm_id):
             **sim.firms,
             firm.id : firm._replace(
                 inventory_for_sale_quantity = inventory_for_sale_quantity,
-                hiring_vacancy_rate_history = [*firm.hiring_vacancy_rate_history[-firm.hiring_vacancy_memory:], hiring_vacancy_rate]
+                hiring_vacancy_rate_history = [*firm.hiring_vacancy_rate_history[-firm.hiring_vacancy_memory:], hiring_vacancy_rate] # TODO right place to update this?
             )
         }
     )
