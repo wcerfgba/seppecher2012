@@ -63,6 +63,7 @@ class Household(NamedTuple):
     job_search_size: int = 5
     purchase_search_size: int = 5
     income_history: list[int] = []
+    income_memory: int = 12
 
 class EmploymentContract(NamedTuple):
     id: int
@@ -177,7 +178,13 @@ def bank_pay_dividend(sim):
                    )
                }
            }
-        )
+        ),
+        households = {
+          **sim.households,
+          household.id : household._replace(
+            income_history = [*household.income_history[-household.income_memory:], dividend]
+          )
+        }
     )
 
 def bank_dividend(bank):
@@ -214,7 +221,13 @@ def firm_pay_dividend(sim, firm_id):
                    )
                }
            }
-        )
+        ),
+        households = {
+          **sim.households,
+          household.id : household._replace(
+            income_history = [*household.income_history[-household.income_memory:], dividend]
+          )
+        }
     )
 
 def firm_dividend(firm, firm_account):
@@ -611,7 +624,7 @@ def firm_pay_worker(sim, firm_id, employment_contract_id):
         households = {
           **sim.households,
           household.id : household._replace(
-            income_history = [*household.income_history, employment_contract.wage]
+            income_history = [*household.income_history[-household.income_memory:], employment_contract.wage]
           )
         }
     )
@@ -634,7 +647,7 @@ def household_consume(sim, household_id):
     if 0 < len(household.income_history):
       average_income = mean(household.income_history)
     savings_target = 12 * average_income * household.savings_target_ratio
-    savings = account.balance - average_income
+    savings = account.balance - average_income # TODO seems off
     consumption_target = 0
     if savings < savings_target:
         consumption_target = average_income * (1 - household.propensity_to_save)
@@ -789,49 +802,56 @@ def loan_pay_back(sim, account_id, loan_id):
     time_remaining = loan.time_remaining
     quality = loan.quality
 
-    if time_remaining == 0:
+    if quality == LoanQuality.GOOD and 0 < time_remaining:
+      return sim
+
+    repayment = 0
+    if 0 < time_remaining:
       repayment = min(account.balance, loan.principal)
+    else:
+      repayment = loan.principal
       if account.balance < loan.principal:
+        repayment = account.balance
         time_remaining += loan.term
         if quality == LoanQuality.GOOD:
             interest_rate = bank.loan_penalty_rate
             quality = LoanQuality.DOUBTFUL
         elif quality == LoanQuality.DOUBTFUL and not bank.accommodating:
             quality = LoanQuality.BAD
-        return sim._replace(
-            bank = bank._replace(
-                accounts = {
-                    **bank.accounts,
-                    account.id : account._replace(
-                        balance = account.balance - repayment,
-                        loans = {
-                            **account.loans,
-                            loan.id : loan._replace(
-                                principal = loan.principal - repayment,
-                                quality = quality,
-                                time_remaining = time_remaining,
-                                interest_rate = interest_rate
-                            )
-                        }
-                    )
-                }
-            )
-        )
-      else:
-        return sim._replace(
-            bank = bank._replace(
-                accounts = {
-                    **bank.accounts,
-                    account.id : account._replace(
-                        balance = account.balance - repayment,
-                        loans = {l.id : l for l in account.loans.values()
-                                  if l.id != loan.id}
-                    )
-                }
-            )
-        )
+
+    if account.balance < loan.principal:
+      return sim._replace(
+          bank = bank._replace(
+              accounts = {
+                  **bank.accounts,
+                  account.id : account._replace(
+                      balance = account.balance - repayment,
+                      loans = {
+                          **account.loans,
+                          loan.id : loan._replace(
+                              principal = loan.principal - repayment,
+                              quality = quality,
+                              time_remaining = time_remaining,
+                              interest_rate = interest_rate
+                          )
+                      }
+                  )
+              }
+          )
+      )
     else:
-      return sim
+      return sim._replace(
+          bank = bank._replace(
+              accounts = {
+                  **bank.accounts,
+                  account.id : account._replace(
+                      balance = account.balance - repayment,
+                      loans = {l.id : l for l in account.loans.values()
+                                if l.id != loan.id}
+                  )
+              }
+          )
+      )
 
 def loan_cancel(sim, account_id, loan_id):
     bank = sim.bank
@@ -840,9 +860,6 @@ def loan_cancel(sim, account_id, loan_id):
 
     principal = loan.principal
     capital = bank.capital
-
-    capital -= min(capital, principal)
-    principal -= min(capital, principal)
 
     if capital < principal:
         return sim._replace(
@@ -853,7 +870,7 @@ def loan_cancel(sim, account_id, loan_id):
     else:
       return sim._replace(
           bank = bank._replace(
-              capital = capital,
+              capital = capital - principal,
               accounts = {
                   **bank.accounts,
                   account.id : account._replace(
